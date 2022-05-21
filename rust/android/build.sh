@@ -30,6 +30,8 @@ if [ "$#" -eq 0 ];
 then
   for phase in "${PHASES[@]}"
   do
+  echo "phase::::";
+  echo $phase;
     ./buildphases/$phase.sh;
   done
   exit 0;

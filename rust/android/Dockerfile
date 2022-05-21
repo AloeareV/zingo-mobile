@@ -16,18 +16,28 @@ RUN apt-get update \
             git \
             g++-aarch64-linux-gnu \
             libc6-dev-arm64-cross \
- && update-ca-certificates \
+ && update-ca-certificates
  # Install NDK itself
- && curl -fL -o /tmp/android-ndk.zip \
-         https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip \
- && unzip /tmp/android-ndk.zip -d /usr/local/
+FROM apt_upgrade_rustndk_image as add_builder_user
+ARG  UID=$UID
+ARG  GUID=$GUID
+RUN  addgroup --gid $GUID builderuser 
+RUN  useradd -ms `which bash` --gid $GUID --uid $UID builderuser 
 
+USER builderuser 
+ENV  HOME=/home/builderuser  
 
+#RUN curl -fL -o /tmp/android-ndk.zip \
+#https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip \
+# && unzip /tmp/android-ndk.zip -d /usr/local/
+RUN curl -vfL -o /tmp/android-ndk.zip \
+ https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip
+RUN unzip /tmp/android-ndk.zip -d /usr/local/
+    
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o ./rustup.sh
 RUN chmod +x ./rustup.sh && ./rustup.sh -y
-ENV HOME=/root
 ENV CARGO_HOME=$HOME/.cargo
-ENV PATH=$PATH:/root/.cargo/bin
+ENV PATH=$PATH:/$HOME/.cargo/bin
 # get latest stable toolchain
 RUN rustup toolchain install stable
 
@@ -37,7 +47,6 @@ RUN rustup target add aarch64-linux-android \
                       i686-linux-android \
                       x86_64-linux-android
 
-
 # Path to the Android NDK for cargo-ndk Cargo plugin
 ENV ANDROID_NDK_HOME=/usr/local/android-ndk-${android_ndk_ver} \
     NDK_HOME=/usr/local/android-ndk-${android_ndk_ver} \
@@ -45,18 +54,10 @@ ENV ANDROID_NDK_HOME=/usr/local/android-ndk-${android_ndk_ver} \
 
 ENV PATH=/usr/local/android-ndk-${android_ndk_ver}/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
 
-
 # Install cargo-ndk Cargo plugin
 RUN cargo install cargo-ndk
 
 FROM apt_upgrade_rustndk_image as rustndk_openssl_installed_image
-
-# RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
-# ENV PATH=/root/.cargo/bin:/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
-
-# RUN rustup target add i686-linux-android
-# RUN rustup target add armv7-linux-androideabi
-# RUN rustup target add aarch64-linux-android
 
 # change this if the ndk updates
 
@@ -81,7 +82,7 @@ RUN cd /opt/openssl-3.0.1 && \
 
 RUN rustup component add rustfmt
 
-RUN cd /opt && git clone --depth=1 https://github.com/zingolabs/zecwallet-mobile zecwalletmobile && cd zecwalletmobile/rust/android && cargo fetch && cargo build --release && rm -rf /opt/zecwalletmobile
+RUN cd /opt && git clone -v --depth=1 https://github.com/zingolabs/zecwallet-mobile zecwalletmobile && cd zecwalletmobile/rust/android && cargo fetch && cargo build --release && rm -rf /opt/zecwalletmobile
 
 RUN rustup target install aarch64-linux-android
 RUN echo "[target.aarch64-linux-android]" >> $CARGO_HOME/config.toml
