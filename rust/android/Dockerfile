@@ -17,27 +17,33 @@ RUN apt-get update \
             g++-aarch64-linux-gnu \
             libc6-dev-arm64-cross \
  && update-ca-certificates
- # Install NDK itself
+# Add buildergroup
 FROM apt_upgrade_rustndk_image as add_builder_user
 ARG  UID=$UID
 ARG  GUID=$GUID
-RUN  addgroup --gid $GUID builderuser 
+RUN  addgroup --gid $GUID buildergroup 
+# Add builderuser
 RUN  useradd -ms `which bash` --gid $GUID --uid $UID builderuser 
+RUN  whoami
+RUN  cat /etc/group
+RUN  cat /etc/passwd
 
-USER builderuser 
-ENV  HOME=/home/builderuser  
+#USER builderuser 
+#ENV  HOME=/home/builderuser  
 
-#RUN curl -fL -o /tmp/android-ndk.zip \
-#https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip \
-# && unzip /tmp/android-ndk.zip -d /usr/local/
-RUN curl -vfL -o /tmp/android-ndk.zip \
- https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip
-RUN unzip /tmp/android-ndk.zip -d /usr/local/
+# Install NDK itself
+RUN curl -fL -o /tmp/android-ndk.zip \
+https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip \
+ && unzip /tmp/android-ndk.zip -d /usr/local/
+#RUN curl -vfL -o /tmp/android-ndk.zip \
+# https://dl.google.com/android/repository/android-ndk-${android_ndk_ver}-linux.zip
+#RUN unzip /tmp/android-ndk.zip -d /usr/local/
     
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o ./rustup.sh
 RUN chmod +x ./rustup.sh && ./rustup.sh -y
+ENV  HOME=/root  
 ENV CARGO_HOME=$HOME/.cargo
-ENV PATH=$PATH:/$HOME/.cargo/bin
+ENV PATH=$PATH:/root/.cargo/bin
 # get latest stable toolchain
 RUN rustup toolchain install stable
 
